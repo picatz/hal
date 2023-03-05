@@ -17,7 +17,20 @@ func handleNormalMode(screen *Screen) error {
 		return fmt.Errorf("user interrupted")
 	}
 
-	_, err = screen.FH.WriteString(k.String())
+	if k == KeyCtrlV {
+		// TODO: Handle the insert/visual mode better?
+		// screen.Mode = Insert
+
+		// Write ANSI escape sequence for highlighting the current line.
+		_, err := screen.WriteString("\x1b[7m")
+		if err != nil {
+			return fmt.Errorf("failed to write ANSI escape sequence to screen: %w", err)
+		}
+
+		return nil
+	}
+
+	_, err = screen.WriteString(k.String())
 	if err != nil {
 		return fmt.Errorf("failed to write key to screen: %w", err)
 	}
