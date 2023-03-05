@@ -51,6 +51,22 @@ func NewScreen(fh *os.File, mode Mode) *Screen {
 	}
 }
 
+// WriteString writes the string to the terminal, and updates the cursor
+// positions in the output buffer.
+func (screen *Screen) WriteString(s string) (int, error) {
+	// Write the string to the terminal.
+	n, err := screen.FH.WriteString(s)
+	if err != nil {
+		return 0, fmt.Errorf("failed to write string to terminal screen: %w", err)
+	}
+
+	// Update the output buffer.
+	screen.Output.Buffer = append(screen.Output.Buffer, []byte(s)...)
+	screen.Output.Cursor += len(s)
+
+	return n, nil
+}
+
 // ReadBytes reads next byte from the terminal.
 func (screen *Screen) ReadByte() (byte, error) {
 	// Read the next character from the terminal.
