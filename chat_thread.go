@@ -24,6 +24,9 @@ type chatThread struct {
 	// The chat history is the list of messages that have been sent and
 	// received in the chat session.
 	ChatHistory []openai.ChatMessage `json:"chat_history"`
+
+	// Tokens is the last reported number of tokens used in the chat session.
+	Tokens int `json:"tokens"`
 }
 
 func (ct *chatThread) Title() string       { return ct.Name }

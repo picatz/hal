@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/picatz/openai"
@@ -23,6 +22,9 @@ var welcomeToHAL = lipgloss.JoinHorizontal(
 )
 
 type model struct {
+	// Mode is the current mode of the application. TODO.
+	mode Mode
+
 	// General dimensions.
 	width  int
 	height int
@@ -42,14 +44,13 @@ type model struct {
 	chatInput textarea.Model
 
 	// chatOutput is the current chat response (output).
-	chatOutput viewport.Model
+	// chatOutput viewport.Model
 
 	// Status bar.
 	statusbar *statusBar
 
 	// OpenAI API client and chat history.
 	client            *openai.Client
-	chatTokens        int
 	chatSystemMessage openai.ChatMessage
 	chatThreadList    list.Model
 	chatThreads       []chatThread
@@ -104,30 +105,31 @@ func newModel() model {
 	chatThreadList.SetShowHelp(false) // true?
 
 	// Setup text area for user input.
-	ta := textarea.New()
-	ta.Placeholder = "What do you want to do?"
-	ta.Prompt = halStyleColor.Bold(true).Render("│ ")
-	ta.CharLimit = 4096
-	ta.SetWidth(80)
-	ta.Focus()
-	ta.Focused()
+	chatInput := textarea.New()
+	chatInput.Placeholder = "What do you want to do?"
+	chatInput.Prompt = halStyleColor.Bold(true).Render("│")
+	chatInput.CharLimit = 4096
+	chatInput.SetWidth(80)
+	chatInput.Focus()
+	chatInput.Focused()
 
 	// Remove cursor line styling
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-	ta.ShowLineNumbers = false
+	chatInput.FocusedStyle.CursorLine = lipgloss.NewStyle().
+		Background(lipgloss.Color("57")).
+		Foreground(lipgloss.Color("230"))
+	chatInput.ShowLineNumbers = true
 
-	vp := viewport.New(-1, 1)
-	// vp.SetContent(welcomeToHAL)
+	// chatOutput := viewport.New(-1, 1)
 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = halStyleColor
 
 	return model{
-		chatInput:  ta,
-		chatOutput: vp,
-		halStyle:   halStyleColor,
-		err:        nil,
+		chatInput: chatInput,
+		// chatOutput: chatOutput,
+		halStyle: halStyleColor,
+		err:      nil,
 
 		chatThreads:    chatThreads,
 		chatThreadList: chatThreadList,
@@ -152,13 +154,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.statusbar = statusbarModel.(*statusBar)
 
 	var (
-		textareaCmd      tea.Cmd
-		viewportCmd      tea.Cmd
+		textareaCmd tea.Cmd
+		// viewportCmd      tea.Cmd
 		hatThreadListCmd tea.Cmd
 	)
 
 	m.chatInput, textareaCmd = m.chatInput.Update(msg)
-	m.chatOutput, viewportCmd = m.chatOutput.Update(msg)
+	// m.chatOutput, viewportCmd = m.chatOutput.Update(msg)
 
 	// We haven't selected a threas yet, so allow for selection of the thread.
 	if m.currnetThread == nil {
@@ -172,11 +174,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case tea.KeyCtrlE: // Open editor with current text with textarea buffer.
 			return m, openEditor(m.chatInput.Value(), false)
-		case tea.KeyCtrlO: // Open editor with current text with viewport buffer.
-			// Strip any ANSI color codes from the viewport.
-			vpView := Strip(m.chatOutput.View())
-
-			return m, openEditor(vpView, true)
+		// case tea.KeyCtrlO: // Open editor with current text with viewport buffer.
+		// 	// Strip any ANSI color codes from the viewport.
+		// 	vpView := Strip(m.chatOutput.View())
+		// 	return m, openEditor(vpView, true)
 		case tea.KeyCtrlT: // Truncate the previous chat history.
 			if m.currnetThread != nil && len(m.currnetThread.ChatHistory) > 2 {
 				lastMessage := m.currnetThread.ChatHistory[len(m.currnetThread.ChatHistory)-1]
@@ -186,13 +187,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					lastMessage,
 				}
 			}
-		case tea.KeyCtrlL: // Clear the viewport.
-			m.chatOutput.SetContent("")
+		// case tea.KeyCtrlL: // Clear the viewport.
+		// 	m.chatOutput.SetContent("")
 		case tea.KeyEscape:
 			text := m.chatInput.Value()
 
 			m.chatLoading = true
-			m.chatOutput.GotoBottom()
+			// m.chatOutput.GotoBottom()
 			m.chatInput.Reset()
 
 			// send the message to the OpenAI chat API
@@ -207,7 +208,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.currnetThread.ChatHistory = append(m.currnetThread.ChatHistory, m.chatSystemMessage)
 				}
 
-				m.chatOutput.SetContent("» " + m.currnetThread.Name)
+				// Update the status bar with the current thread.
+				m.statusbar.Update(&statusBarMsg{
+					ChatThread: m.currnetThread,
+				})
+
 				return m, nil
 			}
 		}
@@ -226,7 +231,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			msg.buffer = styledMsgBuffer
 
-			m.chatOutput.SetContent(string(msg.buffer))
+			// m.chatOutput.SetContent(string(msg.buffer))
 
 			// Update the last message in the chat history with the editor buffer.
 			lastMessage := m.currnetThread.ChatHistory[len(m.currnetThread.ChatHistory)-1]
@@ -247,37 +252,44 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.currnetThread.ChatHistory = msg.history
-		m.chatTokens = msg.tokens
+		m.currnetThread.Tokens = msg.tokens
 
-		styledMsgBuffer, height, err := renderMarkdown(msg.buffer, 80)
-		if err != nil {
-			panic(err)
-		}
+		// styledMsgBuffer, height, err := renderMarkdown(msg.buffer, 80)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		msg.buffer = styledMsgBuffer
+		// msg.buffer = styledMsgBuffer
 
-		m.chatOutput.SetContent(
-			lipgloss.JoinVertical(
-				lipgloss.Left,
-				string(msg.buffer),
-			),
-		)
+		// m.chatOutput.SetContent(
+		// 	lipgloss.JoinVertical(
+		// 		lipgloss.Left,
+		// 		string(msg.buffer),
+		// 	),
+		// )
 
-		m.chatOutput.Height = height + 2
-		m.chatOutput.GotoTop()
+		m.chatInput.SetValue(string(msg.buffer))
+
+		// m.chatInput.SetHeight(height)
+
+		// m.chatOutput.Height = height + 2
+		// m.chatOutput.GotoTop()
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 
-		m.chatOutput.Style.Width(msg.Width)
-		m.chatOutput.Style.Height(msg.Height - 2)
+		// m.chatOutput.Style.Width(msg.Width)
+		// m.chatOutput.Style.Height(msg.Height - 2)
+
+		m.chatInput.SetHeight(msg.Height - 4)
+		m.chatInput.SetWidth(msg.Width)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.chatSpinner, cmd = m.chatSpinner.Update(msg)
 		return m, cmd
 	}
 
-	return m, tea.Batch(statusbarCmd, textareaCmd, viewportCmd, hatThreadListCmd, m.chatSpinner.Tick)
+	return m, tea.Batch(statusbarCmd, textareaCmd, hatThreadListCmd, m.chatSpinner.Tick)
 }
 
 func (m model) chooseThreadListView() string {
@@ -290,63 +302,20 @@ func (m model) chooseThreadListView() string {
 }
 
 func (m model) viewChatInput() string {
-	return lipgloss.JoinVertical(
-		lipgloss.Top,
-		m.chatInput.View(),
-		"",
-		m.viewChatInputDiagnostics(),
-		"",
-		m.viewChatInputHelp(),
-	)
+	return m.chatInput.View()
 }
 
-func (m model) viewChatInputDiagnostics() string {
-	return lipgloss.JoinHorizontal(
-		lipgloss.Left,
-		lipgloss.NewStyle().Foreground(lipgloss.Color("69")).Bold(true).Render("Bytes: "),
-		lipgloss.NewStyle().Render(fmt.Sprint(len(m.chatInput.Value()))),
-		" ",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("69")).Bold(true).Render("~Tokens: "),
-		lipgloss.NewStyle().Render(fmt.Sprint(countTokens(m.chatInput.Value()))),
-		" ",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("69")).Bold(true).Render("Chat Tokens: "),
-		lipgloss.NewStyle().Render(fmt.Sprint(m.chatTokens)),
-		" ",
-		lipgloss.NewStyle().Foreground(lipgloss.Color("69")).Bold(true).Render("Chat Messages: "),
-		lipgloss.NewStyle().Render(fmt.Sprint(len(m.currnetThread.ChatHistory))),
-	)
-}
-
-func (m model) viewChatOutput() string {
-	if m.chatLoading {
-		return lipgloss.JoinHorizontal(
-			lipgloss.Left,
-			m.chatSpinner.View(),
-			"Running...",
-		)
-	}
-
-	return m.chatOutput.View()
-}
-
-var (
-	halHelpFaint = lipgloss.NewStyle().Faint(true)
-	halHelpBold  = lipgloss.NewStyle().Foreground(lipgloss.Color("69")).Bold(true)
-
-	// TODO: make configurable and deeply consider the result.
-	viewChatInputHelpCached = lipgloss.JoinHorizontal(
-		lipgloss.Left,
-		halHelpFaint.Render("Press"),
-		halHelpBold.Render(" ESC "), halHelpFaint.Render("to run,"),
-		halHelpBold.Render(" CTRL+E "), halHelpFaint.Render("to edit input,"),
-		halHelpBold.Render(" CTRL+O "), halHelpFaint.Render("to edit output,"),
-		halHelpBold.Render(" CTRL+C "), halHelpFaint.Render("to quit."),
-	)
-)
-
-func (m model) viewChatInputHelp() string {
-	return viewChatInputHelpCached
-}
+// func (m model) viewChatOutput() string {
+// 	if m.chatLoading {
+// 		return lipgloss.JoinHorizontal(
+// 			lipgloss.Left,
+// 			m.chatSpinner.View(),
+// 			"Running...",
+// 		)
+// 	}
+//
+// 	return m.chatOutput.View()
+// }
 
 func (m model) View() string {
 	var mainView string
@@ -356,8 +325,7 @@ func (m model) View() string {
 	} else {
 		mainView = lipgloss.JoinVertical(
 			lipgloss.Top,
-			m.viewChatOutput(),
-			"",
+			// m.viewChatOutput(),
 			m.viewChatInput(),
 		)
 	}
