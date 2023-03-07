@@ -15,30 +15,6 @@ import (
 	"github.com/picatz/openai"
 )
 
-type chatThread struct {
-	// Name (title) of the thread.
-	Name string `json:"title"`
-
-	// Summary (description) of the thread.
-	Summary string `json:"description"`
-
-	// Created is the date the thread was created.
-	Created time.Time `json:"date"`
-
-	// The prompt is the initial text that the model will generate from.
-	// This is the text that the user will see when they first open the
-	// chat window.
-	Prompt string `json:"prompt"`
-
-	// The chat history is the list of messages that have been sent and
-	// received in the chat session.
-	ChatHistory []openai.ChatMessage `json:"chat_history"`
-}
-
-func (ct *chatThread) Title() string       { return ct.Name }
-func (ct *chatThread) Description() string { return ct.Summary }
-func (ct *chatThread) FilterValue() string { return ct.Name }
-
 var welcomeToHAL = lipgloss.JoinHorizontal(
 	lipgloss.Left,
 	"Welcome to",
@@ -261,7 +237,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	// We handle errors just like any other message
 	case errMsg:
-		m.err = msg
+		m.err = fmt.Errorf("error: %s", msg)
 		return m, nil
 	case chatFinishedMsg:
 		m.chatLoading = false
@@ -385,14 +361,17 @@ func (m model) View() string {
 		m.viewChatInput(),
 	)
 
+	// The space between the main view and the statusbar (sticky footer).
+	//
 	// -2 for the statusbar, -1 for the newline.
 	spaceBetween := m.height - strings.Count(mainView, "\n") - 2 - 1
 
+	// If there's no space for the statusbar, just return the main view.
 	if spaceBetween < 0 {
 		return mainView
 	}
 
-	// place the statusbar view at the bottom of the screen, fit the rest above it.
+	// Place the statusbar view at the bottom of the screen, fit the rest above it.
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		mainView,
