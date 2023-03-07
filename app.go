@@ -286,7 +286,6 @@ func (m model) chooseThreadListView() string {
 		welcomeToHAL,
 		"",
 		m.chatThreadList.View(),
-		"",
 	)
 }
 
@@ -350,16 +349,18 @@ func (m model) viewChatInputHelp() string {
 }
 
 func (m model) View() string {
-	if m.currnetThread == nil {
-		return m.chooseThreadListView()
-	}
+	var mainView string
 
-	mainView := lipgloss.JoinVertical(
-		lipgloss.Top,
-		m.viewChatOutput(),
-		"",
-		m.viewChatInput(),
-	)
+	if m.currnetThread == nil {
+		mainView = m.chooseThreadListView()
+	} else {
+		mainView = lipgloss.JoinVertical(
+			lipgloss.Top,
+			m.viewChatOutput(),
+			"",
+			m.viewChatInput(),
+		)
+	}
 
 	// The space between the main view and the statusbar (sticky footer).
 	//
