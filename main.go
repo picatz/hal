@@ -15,10 +15,6 @@ var (
 	halStyleColor = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
 )
 
-type (
-	errMsg error
-)
-
 func main() {
 	p := tea.NewProgram(
 		newModel(),

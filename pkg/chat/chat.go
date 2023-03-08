@@ -1,4 +1,4 @@
-package main
+package chat
 
 import (
 	"context"
@@ -8,14 +8,14 @@ import (
 	"github.com/picatz/openai"
 )
 
-type chatFinishedMsg struct {
-	err     error
-	buffer  []byte
-	history []openai.ChatMessage
-	tokens  int
+type FinishedMsg struct {
+	Err     error
+	Buffer  []byte
+	History []openai.ChatMessage
+	Tokens  int
 }
 
-func sendChatRequest(client *openai.Client, chatHistory []openai.ChatMessage, text string) tea.Cmd {
+func Send(client *openai.Client, chatHistory []openai.ChatMessage, text string) tea.Cmd {
 	return func() tea.Msg {
 		// send the message to the OpenAI chat API
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
@@ -31,7 +31,7 @@ func sendChatRequest(client *openai.Client, chatHistory []openai.ChatMessage, te
 			Messages: chatHistory,
 		})
 		if err != nil {
-			return editorFinishedMsg{err: err}
+			return FinishedMsg{Err: err}
 		}
 
 		// Add response to chat history
@@ -40,11 +40,11 @@ func sendChatRequest(client *openai.Client, chatHistory []openai.ChatMessage, te
 			Content: resp.Choices[0].Message.Content,
 		})
 
-		return chatFinishedMsg{
-			err:     nil,
-			buffer:  []byte(resp.Choices[0].Message.Content),
-			history: chatHistory,
-			tokens:  resp.Usage.TotalTokens,
+		return FinishedMsg{
+			Err:     nil,
+			Buffer:  []byte(resp.Choices[0].Message.Content),
+			History: chatHistory,
+			Tokens:  resp.Usage.TotalTokens,
 		}
 	}
 }

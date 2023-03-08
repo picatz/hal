@@ -1,10 +1,10 @@
 package main
 
-// Mode of the editor.
+// Mode of the editor (still figuring it out).
 type Mode int
 
 const (
-	ModeChat Mode = iota
-	ModeInsert
+	ModeChatThreadList Mode = iota
+	ModeEditorInsert
 	ModeShell
 )
