@@ -25,7 +25,7 @@ func OpenExternal(buffer string) tea.Cmd {
 	editor := ConfiguredExternalCommand()
 
 	// Write to a temp file and open it
-	f, err := os.CreateTemp("", "hal-editor-*")
+	f, err := os.CreateTemp(os.TempDir(), "hal-editor-*")
 	if err != nil {
 		panic(err)
 	}
