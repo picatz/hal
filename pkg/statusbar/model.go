@@ -31,6 +31,8 @@ type SpinMsg struct {
 
 // Model is a status bar model.
 type Model struct {
+	// TODO: Music bool
+
 	Width int
 	Style lipgloss.Style
 
@@ -99,24 +101,38 @@ func (s *Model) View() string {
 		chatTokensCount = s.ChatThread.Tokens
 	}
 
-	var spinnerBlock string
-	if s.Spinning {
-		spinnerBlock = s.Spinner.View()
-	} else {
-		spinnerBlock = "»"
-	}
-
+	// Right hand side blocks.
 	var (
-		messageCountStatusBarBlock = messageCountStatusBarBlockStyle.Render(fmt.Sprintf(" Messages: %d ", chatMessageCount))
-		tokensCountStatusBarBlock  = tokensCountStatusBarBlockStyle.Render(fmt.Sprintf(" Tokens: %d ", chatTokensCount))
-		currentThreadNameBlock     = currentThreadNameBlockStyle.Render(fmt.Sprintf(" %s ", currentThreadName))
+		rightBlocks = []string{
+			messageCountStatusBarBlockStyle.Render(fmt.Sprintf(" Messages: %d ", chatMessageCount)),
+			tokensCountStatusBarBlockStyle.Render(fmt.Sprintf(" Tokens: %d ", chatTokensCount)),
+			currentThreadNameBlockStyle.Render(fmt.Sprintf(" %s ", currentThreadName)),
+		}
+
+		rightBlocksJoined = strings.Join(rightBlocks, "")
+
+		rightBlocksJoinedWidth = ansi.PrintableRuneWidth(rightBlocksJoined)
+	)
+
+	// Left hand side block(s).
+	var (
+		leftBlocks = []string{
+			// Spinner
+			func() string {
+				if s.Spinning {
+					return s.Spinner.View()
+				}
+				return "»"
+			}(),
+		}
+
+		leftBlocksJoined = strings.Join(leftBlocks, "")
 	)
 
 	// get printable characters (non ANSI escape codes)
-	printableChars := ansi.PrintableRuneWidth(messageCountStatusBarBlock + tokensCountStatusBarBlock + currentThreadNameBlock)
 
 	// build status bar including the current thread name on right hand side, filling the rest of the space with spaces
-	statusText := " " + spinnerBlock + strings.Repeat(" ", s.Width-printableChars-6) + messageCountStatusBarBlock + tokensCountStatusBarBlock + currentThreadNameBlock + " "
+	statusText := " " + leftBlocksJoined + strings.Repeat(" ", s.Width-rightBlocksJoinedWidth-6) + rightBlocksJoined + " "
 
 	// TODO: add a way to set the status bar style, and stuff inside it.
 	return s.Style.Render(statusText)
