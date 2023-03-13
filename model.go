@@ -18,13 +18,7 @@ import (
 	"github.com/picatz/hal/pkg/statusbar"
 )
 
-var welcomeToHAL = lipgloss.JoinHorizontal(
-	lipgloss.Left,
-	"Welcome to",
-	lipgloss.NewStyle().Foreground(lipgloss.Color("69")).Bold(true).Render(" HAL"),
-	"!",
-)
-
+// Model is the main model of the application.
 type model struct {
 	// Mode is the current mode of the application. TODO.
 	mode Mode
@@ -52,6 +46,7 @@ type model struct {
 	currnetThread     *chat.Thread
 }
 
+// newModel creates a new model with the default values.
 func newModel() model {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
@@ -80,31 +75,12 @@ func newModel() model {
 	}
 
 	// Setup chat thread list.
-	chatThreadList := list.New(chatThreads.ListItems(), list.NewDefaultDelegate(), 80, 10)
-	chatThreadList.SetWidth(80)
-	chatThreadList.SetHeight(15)
-	chatThreadList.Styles.FilterCursor = halStyleColor
-
-	chatThreadList.Title = "Threads"
-	chatThreadList.Styles.TitleBar = halStyleColor
-	chatThreadList.Styles.FilterCursor = halStyleColor
-	chatThreadList.Styles.FilterPrompt = halStyleColor
-	chatThreadList.Styles.DefaultFilterCharacterMatch = halStyleColor
-	chatThreadList.SetShowHelp(false) // true?
+	chatThreadList := ChatThreadList(chatThreads)
 
 	// Setup text area for user input.
-	editor := textarea.New()
-	editor.Placeholder = "What do you want to do?"
-	editor.Prompt = halStyleColor.Bold(true).Render("│")
-	editor.CharLimit = 4096
-	editor.SetWidth(80)
-	editor.Focus()
-	editor.Focused()
-	editor.ShowLineNumbers = true
-	editor.FocusedStyle.CursorLine = lipgloss.NewStyle().
-		Background(lipgloss.Color("236")). // faint background with
-		Foreground(lipgloss.Color("231"))  // extra bright text on cursor line
+	editor := EditorTextArea()
 
+	// Return the model.
 	return model{
 		// Started in chat thread list mode by default (if not file selected in args?)
 		mode: ModeChatThreadList,
