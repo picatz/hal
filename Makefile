@@ -20,3 +20,8 @@ GO_BUILD := go build -ldflags "-X main.version=$(VERSION) -X main.gitCommit=$(GI
 .PHONY: build
 build:
 	$(GO_BUILD) -o $(NAME)
+
+# Record the demo GIF
+.PHONY: demo
+demo:
+	vhs < demo.tape
