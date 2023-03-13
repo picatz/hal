@@ -9,10 +9,10 @@ import (
 
 type Thread struct {
 	// Name (title) of the thread.
-	Name string `json:"title"`
+	Name string `json:"name"`
 
 	// Summary (description) of the thread.
-	Summary string `json:"description"`
+	Summary string `json:"summary"`
 
 	// Created is the date the thread was created.
 	Created time.Time `json:"date"`
