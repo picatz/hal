@@ -7,6 +7,9 @@ import (
 	"github.com/picatz/openai"
 )
 
+// Thread is a "chat thread" that is used to store the chat history and
+// metadata for a chat session. It implements the list.Item interface
+// so that it can shown in a list in the UI.
 type Thread struct {
 	// Name (title) of the thread.
 	Name string `json:"name"`
@@ -30,16 +33,20 @@ type Thread struct {
 	Tokens int `json:"tokens"`
 }
 
+// Implement the list.Item interface.
 func (ct *Thread) Title() string       { return ct.Name }
 func (ct *Thread) Description() string { return ct.Summary }
 func (ct *Thread) FilterValue() string { return ct.Name }
 
+// Threads is a collection of chat threads.
 type Threads []*Thread
 
+// Implement the sort.Interface interface.
 func (cts Threads) Len() int           { return len(cts) }
 func (cts Threads) Less(i, j int) bool { return cts[i].Created.Before(cts[j].Created) }
 func (cts Threads) Swap(i, j int)      { cts[i], cts[j] = cts[j], cts[i] }
 
+// ListItems returns a list of list.Item's from the Threads.
 func (cts Threads) ListItems() []list.Item {
 	chatThreadListItems := []list.Item{}
 
