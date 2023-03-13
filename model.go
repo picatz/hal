@@ -214,7 +214,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		m.editor.SetHeight(msg.Height - 4)
+		m.editor.SetHeight(msg.Height - 2)
 		m.editor.SetWidth(msg.Width)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
