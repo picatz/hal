@@ -1,6 +1,9 @@
 package chat
 
 import (
+	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -56,4 +59,45 @@ func (cts Threads) ListItems() []list.Item {
 	}
 
 	return chatThreadListItems
+}
+
+// Summarize returns a summrized version of the chat history.
+func (ct *Thread) Summarize(ctx context.Context, client *openai.Client) (string, error) {
+	// Create a new thread with a new system prompt to summarize conversation.
+	chatHistory := []openai.ChatMessage{
+		{
+			Role:    openai.ChatRoleSystem,
+			Content: "Answer as concisely as possible to summarize a conversation, capturing the most important points to continue the conversation.",
+		},
+		{
+			Role: openai.ChatRoleUser,
+			Content: func() string {
+				var b strings.Builder
+
+				b.WriteString("Please summarize the following conversation:\n\n")
+
+				for _, m := range ct.ChatHistory {
+					if m.Role == openai.ChatRoleSystem {
+						continue
+					}
+					b.WriteString(fmt.Sprintf("%s: %s", m.Role, m.Content))
+					b.WriteString("\n")
+				}
+
+				return b.String()
+			}(),
+		},
+	}
+
+	// create a summary of the chat history
+	summary, err := client.CreateChat(ctx, &openai.CreateChatRequest{
+		Model:    openai.ModelGPT35Turbo,
+		Messages: chatHistory,
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to create summary of chat thread %q: %w", ct.Name, err)
+	}
+
+	return summary.Choices[0].Message.Content, nil
 }
