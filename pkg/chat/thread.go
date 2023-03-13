@@ -8,6 +8,9 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/picatz/openai"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/search"
 )
 
 // Thread is a "chat thread" that is used to store the chat history and
@@ -100,4 +103,26 @@ func (ct *Thread) Summarize(ctx context.Context, client *openai.Client) (string,
 	}
 
 	return summary.Choices[0].Message.Content, nil
+}
+
+// Search retruns the messages that match the search query. Searching
+// happens locally on the host.
+//
+// TODO: consider returning index information in the search results so
+// that we can highlight the matches in the UI.
+func (ct *Thread) Search(ctx context.Context, query string) ([]*openai.ChatMessage, error) {
+	matcher := search.New(language.AmericanEnglish, search.IgnoreCase)
+
+	pattern := matcher.CompileString(query)
+
+	matches := []*openai.ChatMessage{}
+
+	for _, m := range ct.ChatHistory {
+		msg := m
+		if start, end := pattern.IndexString(msg.Content); start != -1 && end != -1 {
+			matches = append(matches, &msg)
+		}
+	}
+
+	return matches, nil
 }
