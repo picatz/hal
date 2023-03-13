@@ -95,6 +95,6 @@ func TestThreadSearch(t *testing.T) {
 	}
 
 	for _, match := range matches {
-		t.Log(match.Content)
+		t.Log(match.Message.Content)
 	}
 }

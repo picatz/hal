@@ -105,24 +105,44 @@ func (ct *Thread) Summarize(ctx context.Context, client *openai.Client) (string,
 	return summary.Choices[0].Message.Content, nil
 }
 
+// SearchResult is a search result for a chat thread.
+type SearchResult struct {
+	// The message that matched the search query.
+	Message *openai.ChatMessage
+
+	// MessageIndex is the index of the message in the chat history.
+	MessageIndex int
+
+	// MatchStart is the index of the start of the match in the message.
+	StartIndex int
+
+	// MatchEnd is the index of the end of the match in the message.
+	EndIndex int
+}
+
 // Search retruns the messages that match the search query. Searching
 // happens locally on the host.
 //
 // TODO: consider returning index information in the search results so
 // that we can highlight the matches in the UI.
-func (ct *Thread) Search(ctx context.Context, query string) ([]*openai.ChatMessage, error) {
+func (ct *Thread) Search(ctx context.Context, query string) ([]*SearchResult, error) {
 	matcher := search.New(language.AmericanEnglish, search.IgnoreCase)
 
 	pattern := matcher.CompileString(query)
 
-	matches := []*openai.ChatMessage{}
+	results := []*SearchResult{}
 
-	for _, m := range ct.ChatHistory {
+	for i, m := range ct.ChatHistory {
 		msg := m
 		if start, end := pattern.IndexString(msg.Content); start != -1 && end != -1 {
-			matches = append(matches, &msg)
+			results = append(results, &SearchResult{
+				Message:      &msg,
+				MessageIndex: i,
+				StartIndex:   start,
+				EndIndex:     end,
+			})
 		}
 	}
 
-	return matches, nil
+	return results, nil
 }
